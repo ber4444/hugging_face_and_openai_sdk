@@ -1,4 +1,4 @@
-*Using the OpenAI SDK with ChatML structured prompts*
+=Using the OpenAI SDK with ChatML structured prompts and the OpenAI Agents SDK=
 
 Pass `--gemini` to the script to use Gemini instead of OpenAI, although not all functionality transfers over as-is.
 

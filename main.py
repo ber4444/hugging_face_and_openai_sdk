@@ -6,6 +6,13 @@ from openai import OpenAI
 from transformers import pipeline
 from pydantic import BaseModel, Field
 from typing import Optional
+from agents import Agent, Runner, WebSearchTool, function_tool
+
+@function_tool
+def get_platform2():
+    """Get the platform name for Agents SDK
+    """
+    return platform.system()
 
 def get_platform():
     return platform.system()
@@ -26,7 +33,8 @@ def main():
             ]
         },
     ]
-    pipe(text=messages)    """ 
+    pipe(text=messages)
+    """
     
     if args.gemini:
         # Use Gemini via OpenAI-compatible API
@@ -129,6 +137,17 @@ def main():
         if response_content.step == "END":
             print(f"{prefix} {response_content}")
             break
+
+    # and here is another example using the OpenAI Agents SDK (the code above using the plain OpenAI SDK to build an agent, it's simpler with the Agents SDK, run loop is abstracted away):
+    some_agent = Agent(name="foobar")
+    orchestrator_agent = Agent(
+        name="Hello World",
+        instructions="Get today's top news from BBC",
+        tools=[WebSearchTool(), get_platform2, some_agent.as_tool(tool_name="foo", tool_description="bar")]
+    )
+    result = Runner.run_sync(orchestrator_agent, "Hi there! What's up in the world?")
+    print(result)
+    # note: Agents SDK also supports MCP, streaming, handoffs, context management, guardrails, etc.
 
 if __name__ == "__main__":
     main()
