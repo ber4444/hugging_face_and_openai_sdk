@@ -1,8 +1,14 @@
 import argparse
 import os
 import json
+import platform
 from openai import OpenAI
 from transformers import pipeline
+from pydantic import BaseModel, Field
+from typing import Optional
+
+def get_platform():
+    return platform.system()
 
 def main():
     parser = argparse.ArgumentParser()
@@ -10,7 +16,7 @@ def main():
     args = parser.parse_args()
 
     # Using Transformers library with a Hugging Face model
-    pipe = pipeline("image-text-to-text", model="google/gemma-3-4b-it")
+    """ pipe = pipeline("image-text-to-text", model="google/gemma-3-4b-it")
     messages = [
         {
             "role": "user",
@@ -20,7 +26,7 @@ def main():
             ]
         },
     ]
-    pipe(text=messages)    
+    pipe(text=messages)    """ 
     
     if args.gemini:
         # Use Gemini via OpenAI-compatible API
@@ -63,36 +69,64 @@ def main():
         ]
     )
     print(f"{prefix} {response.choices[0].message.content}")
-    # CoT improves the answer quality by making the AI think step by step; example:
+
+    # CoT improves the answer quality by making the AI think step by step; example that also shows tool calling:
+    available_tools = { "get_platform": get_platform }
     message_history = [
         { "role": "system", "content": """
-            You are an enlightened master of Tibetan wisdom. You are answering questions using chain of thought reasoning.
-            You work on START, THINK, and END steps. THINK can be multiple steps, looking at the question from multiple perspectives.
-            Once THINK is done, you move to END.
+            You are answering questions using chain of thought reasoning.
+            You work on START, PLAN, and END steps. PLAN can be multiple steps.
+            Once PLAN is done, you move to END.
+            You can also call a tool from the list of available tools.
+            For every tool call, wait for the observe step which is the output of the called tool.
 
             Rules:
             - Stricly follow the given JSON format in your response
-            - Only run one steps at a time
+            - Only run one step at a time
+            - The sequence of steps if START, PLAN and END
+
+            Available tools:
+            - get_platform(): return the name of the current platform
             
             Output format:
             {
-                "step": "START" | "THINK" | "END",
-                "content": "content"
+                "step": "START" | "PLAN" | "END" | "TOOL" | "OBSERVE",
+                "content": "string", "tool": "string"
             }
+
+            Examples:
+            START: What is my current OS?
+            PLAN: { "step": "PLAN", "content": "Seems like user is interested in the name of his current platform" }
+            PLAN: { "step": "PLAN", "content": "I see get_platform() in the available tools, let's call that to get the platform" }
+            PLAN: { "step": "TOOL", "tool": "get_platform" }
+            PLAN: { "step": "OBSERVE", "tool": "get_platform", "output": "Linux" }
+            PLAN: { "step": "PLAN", "content": "Great, I got the current OS." }
+            END:  { "step": "END", "content": "The current OS is Linux" }
             """ }
     ]
-    initial_query = { "role": "user", "content": "What is the meaning of life?" }
+    class MyOutputFormat(BaseModel):
+        step: str = Field(..., description="The ID of the step, such as PLAN or TOOL") 
+        content: Optional[str] = Field(None, description="The optional content of the step")
+        tool: Optional[str] = Field(None, description="The ID of the tool call")
+    initial_query = { "role": "user", "content": "How do I run a python file on my OS?" }
     message_history.append(initial_query)
     while True:
-        response = client.chat.completions.create(
+        response = client.chat.completions.parse(
             model=model,
-            response_format={"type": "json_object"},
+            response_format=MyOutputFormat,
             messages=message_history
         )
-        raw_result = response.choices[0].message.content
-        response_content = json.loads(raw_result)
-        message_history.append({ "role": "assistant", "content": raw_result })
-        if response_content.get("step") == "END":
+        response_content = response.choices[0].message.parsed
+        message_history.append({ "role": "assistant", "content": response.choices[0].message.content })
+        if response_content.step == "TOOL":
+            tool_to_call = response_content.tool
+            tool_response = available_tools[tool_to_call]()
+            print(f"tool gave: {tool_response}")
+            message_history.append({ "role": "developer", "content": json.dumps(
+                { "step": "OBSERVE", "tool": tool_to_call, "output": tool_response } 
+            ) })
+            continue
+        if response_content.step == "END":
             print(f"{prefix} {response_content}")
             break
 
