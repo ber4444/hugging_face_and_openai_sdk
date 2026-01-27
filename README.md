@@ -1,5 +1,6 @@
-=Using the OpenAI SDK with ChatML structured prompts and the OpenAI Agents SDK=
+# Using the OpenAI SDK with ChatML structured prompts and the OpenAI Agents SDK
 
+## Running with frontier models
 Pass `--gemini` to the script to use Gemini instead of OpenAI, although not all functionality transfers over as-is.
 
 ```bash
@@ -9,8 +10,8 @@ export GEMINI_API_KEY="..." # add your gemini api key in the terminal (optionall
 
 Then you should be able to run the app with `uv run main.py`.
 
-If you want to run on a local model, follow 
-https://hub.docker.com/r/ollama/ollama and then optionally https://docs.openwebui.com/getting-started/quick-start.
+## Local models
+Follow https://hub.docker.com/r/ollama/ollama and then optionally https://docs.openwebui.com/getting-started/quick-start.
 Now you can setup a minimal (5 lines of code) FastAPI server to proxy requests to the local model.
 
 Or use the Transformers library with a Hugging Face model, which is demonstrated in this repo but code is commented out for that
