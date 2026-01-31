@@ -1,5 +1,40 @@
 # Using the OpenAI SDK with ChatML structured prompts and the OpenAI Agents SDK
 
+## Hate Speech Filtering
+
+This repository demonstrates how to filter hate speech and harmful content from model outputs using OpenAI's Moderation API. The implementation includes:
+
+- **`check_content_moderation(client, text)`**: Checks if content contains hate speech or other harmful content and returns detailed moderation results including flagged categories and confidence scores.
+- **`filter_hate_speech(client, text)`**: Filters text for hate speech and returns either the original text if safe, or a warning message if content is flagged.
+
+The moderation API detects multiple categories of harmful content including:
+- Hate speech
+- Harassment
+- Self-harm
+- Sexual content
+- Violence
+
+Example usage:
+```python
+from openai import OpenAI
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# Check model output for hate speech
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Your prompt here"}]
+)
+
+# Filter the output
+filtered_output = filter_hate_speech(client, response.choices[0].message.content)
+print(filtered_output)
+```
+
+For more information, see:
+- [OpenAI Moderation Guide](https://platform.openai.com/docs/guides/moderation)
+- [OpenAI Guardrails Python](https://openai.github.io/openai-guardrails-python/ref/checks/moderation/)
+
 ## Running with frontier models
 Pass `--gemini` to the script to use Gemini instead of OpenAI, although not all functionality transfers over as-is.
 
