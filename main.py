@@ -49,6 +49,7 @@ def main():
         # standard OpenAI
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         model = "gpt-4o-mini"
+        temperature = 0.95 # Lower temperature = deterministic, higher temperature = creative
         prefix = "OpenAI:"
 
     response = client.chat.completions.create(
