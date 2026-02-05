@@ -5,7 +5,7 @@ import platform
 from openai import OpenAI
 from transformers import pipeline
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Dict, Any
 from agents import Agent, Runner, WebSearchTool, function_tool
 
 @function_tool
@@ -16,6 +16,47 @@ def get_platform2():
 
 def get_platform():
     return platform.system()
+
+def check_content_moderation(client: OpenAI, text: str) -> Dict[str, Any]:
+    """Check if content contains hate speech or other harmful content using OpenAI Moderation API.
+    
+    Args:
+        client: OpenAI client instance
+        text: The text to check for moderation
+    
+    Returns:
+        Dictionary containing moderation results with fields:
+        - flagged: Whether the content was flagged
+        - categories: Which categories were flagged (hate, hate/threatening, harassment, etc.)
+        - category_scores: Confidence scores for each category
+    """
+    moderation_response = client.moderations.create(input=text)
+    result = moderation_response.results[0]
+    
+    return {
+        "flagged": result.flagged,
+        "categories": {k: v for k, v in result.categories.model_dump().items() if v},
+        "category_scores": result.category_scores.model_dump()
+    }
+
+def filter_hate_speech(client: OpenAI, text: str) -> str:
+    """Filter text for hate speech and return safe version.
+    
+    Args:
+        client: OpenAI client instance
+        text: The text to check and potentially filter
+    
+    Returns:
+        Original text if safe, or warning message if flagged
+    """
+    moderation_result = check_content_moderation(client, text)
+    
+    if moderation_result["flagged"]:
+        flagged_categories = list(moderation_result["categories"].keys())
+        print(f"⚠️  Content flagged for: {', '.join(flagged_categories)}")
+        return f"[Content filtered: This response was flagged for {', '.join(flagged_categories)}]"
+    
+    return text
 
 def main():
     parser = argparse.ArgumentParser()
@@ -77,7 +118,27 @@ def main():
             { "role": "user", "content": "What is 3+3?" }
         ]
     )
-    print(f"{prefix} {response.choices[0].message.content}")
+    
+    # Apply hate speech filtering to the model output
+    raw_output = response.choices[0].message.content
+    filtered_output = filter_hate_speech(client, raw_output)
+    print(f"{prefix} {filtered_output}")
+    
+    # Demonstration: Check a sample text for hate speech
+    print("\n--- Hate Speech Filtering Demo ---")
+    safe_text = "Hello, how are you today?"
+    unsafe_text = "I hate everyone and want to hurt people"
+    
+    print(f"Checking safe text: '{safe_text}'")
+    moderation_safe = check_content_moderation(client, safe_text)
+    print(f"  Flagged: {moderation_safe['flagged']}")
+    
+    print(f"\nChecking potentially unsafe text: '{unsafe_text}'")
+    moderation_unsafe = check_content_moderation(client, unsafe_text)
+    print(f"  Flagged: {moderation_unsafe['flagged']}")
+    if moderation_unsafe['flagged']:
+        print(f"  Flagged categories: {list(moderation_unsafe['categories'].keys())}")
+
 
     # CoT improves the answer quality by making the AI think step by step; example that also shows tool calling:
     available_tools = { "get_platform": get_platform }
