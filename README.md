@@ -26,6 +26,5 @@ The `python_mcp` folder in this project is not openai related, it just shows how
 The Agent SDK does allow you to talk to MCP tools, an example for that is in `mcp_with_openai_agent.py`. 
 
 ## RAG as a tool
-OpenAI's built-in vector store is called File Search. In Agent Builder, you can drop a text file to the workflow and it will be converted to a vector store.
-
-Or use Chroma DB python or typescript sdk and connect to it as a tool. 
+OpenAI's built-in vector store is [called File Search](https://openai.github.io/openai-agents-python/ref/tool/#agents.tool.FileSearchTool).
+In Agent Builder, you can drop a text file to the workflow and it will be converted to a vector store.
